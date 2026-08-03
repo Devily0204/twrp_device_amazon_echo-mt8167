@@ -1,0 +1,7 @@
+#
+# Copyright (C) 2026 The Team Win Recovery Project
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+/dev/block/platform/bootdevice/by-name/misc    /misc    emmc    defaults    defaults

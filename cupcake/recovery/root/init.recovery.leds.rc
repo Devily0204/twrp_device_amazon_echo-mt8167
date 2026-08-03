@@ -1,0 +1,10 @@
+on init
+    write /sys/bus/i2c/devices/0-0030/bootanimation 0
+    write /sys/class/leds/R/brightness 0
+    write /sys/class/leds/G/brightness 0
+    write /sys/class/leds/B/brightness 0
+
+on shutdown
+    write /sys/class/leds/R/brightness 0
+    write /sys/class/leds/G/brightness 0
+    write /sys/class/leds/B/brightness 0
