@@ -1,0 +1,2 @@
+# This headless profile does not package logd/logcat. Keep the optional import
+# in TWRP's stock init.rc resolvable without declaring an absent logd service.

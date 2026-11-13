@@ -1,0 +1,2 @@
+# TW_INCLUDE_CRYPTO is false for Crumpet's UBIFS volumes. Keep the optional
+# stock init.rc import resolvable; no vold decryption services are required.

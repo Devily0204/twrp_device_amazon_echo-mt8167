@@ -6,6 +6,9 @@
 
 LOCAL_PATH := $(call my-dir)
 
-ifneq ($(filter cupcake donut crumpet,$(TARGET_DEVICE)),)
+# The shared boot-control HAL assumes eMMC misc I/O, not Crumpet raw NAND.
+ifneq ($(filter cupcake donut,$(TARGET_DEVICE)),)
 include $(call all-subdir-makefiles,$(LOCAL_PATH))
+else ifeq ($(TARGET_DEVICE),crumpet)
+include $(LOCAL_PATH)/crumpet/nand/Android.mk
 endif

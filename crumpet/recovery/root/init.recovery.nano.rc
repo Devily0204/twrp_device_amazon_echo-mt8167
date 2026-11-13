@@ -1,0 +1,2 @@
+# TW_EXCLUDE_NANO is true. Keep the stock init.rc import resolvable without
+# setting TERMINFO to resources that are not packaged in this recovery.

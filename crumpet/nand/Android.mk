@@ -1,0 +1,19 @@
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := crumpet-ubi
+LOCAL_SRC_FILES := crumpet-ubi.c
+LOCAL_CFLAGS := -Wall -Wextra -Werror
+LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_STATIC_LIBRARIES := libc
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := crumpet-mtd
+LOCAL_SRC_FILES := crumpet-mtd.c
+LOCAL_CFLAGS := -Wall -Wextra -Werror
+LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_STATIC_LIBRARIES := libc
+include $(BUILD_EXECUTABLE)

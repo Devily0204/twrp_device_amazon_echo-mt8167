@@ -1,0 +1,7 @@
+FROM ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214
+ARG DEBIAN_FRONTEND=noninteractive
+COPY packages-delta.txt /tmp/crumpet-packages.txt
+RUN apt-get update && xargs -r apt-get install -y --no-install-recommends </tmp/crumpet-packages.txt && rm -rf /var/lib/apt/lists/* /tmp/crumpet-packages.txt && useradd -m -u 1000 -s /bin/bash builder
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 LANG=C LC_ALL=C
+USER builder
+WORKDIR /workspace/twrp-crumpet-build/src
