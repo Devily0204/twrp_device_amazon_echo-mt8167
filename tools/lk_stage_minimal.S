@@ -71,7 +71,7 @@ add r5, r5, r7
 bl clean_invalidate_range
 
 /* Publish FDT and the real TWRP initramfs before turning caches off. */
-movw r4, #0x8000
+movw r4, #0x0000
 movt r4, #0x4598
 movw r5, #0x3000
 movt r5, #0x4629                  @ exclusive end of the downloaded bundle
@@ -112,7 +112,7 @@ isb sy
 
 movs r0, #0                       @ Linux r0 = 0
 movs r1, #0                       @ Linux machine ID = 0 (FDT boot)
-movw r2, #0x8000
+movw r2, #0x0000
 movt r2, #0x4598                  @ Linux FDT pointer = 0x45980000
 movw r5, #0x8000
 movt r5, #0x4000                  @ copied TWRP zImage = 0x40008000
@@ -121,7 +121,7 @@ bx r5
 /* r4 = first address, r5 = exclusive end; rounds the end to a cache line. */
 clean_invalidate_range:
 sub r5, r5, #1
-movw r3, #0xffe0
+mvn r3, #0x1f
 and r5, r5, r3
 add r5, r5, #0x20
 and r4, r4, r3

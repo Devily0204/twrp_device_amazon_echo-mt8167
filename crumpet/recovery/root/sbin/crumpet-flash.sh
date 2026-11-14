@@ -15,7 +15,8 @@ fi
 
 case "$target" in
     boot_a|boot_b|system_a|system_b)
-        slot=$(getprop ro.boot.slot_suffix)
+        slot=$("${root}/sbin/crumpet-active-slot.sh")
+slot="_${slot}"
         case "$slot" in _a|_b) ;; *) echo "Unknown active slot" >&2; exit 1 ;; esac
         [ "_${target##*_}" != "$slot" ] || { echo "Refusing to overwrite active slot" >&2; exit 1; }
         ;;

@@ -80,6 +80,7 @@ def load_bundle(path):
 def wait_for_twrp(adb, expected_serial, expected_version, timeout_seconds):
     deadline = time.monotonic() + timeout_seconds
     observations = []
+    last_failure = None
     while time.monotonic() < deadline:
         try:
             rows = adb_devices(adb)
@@ -97,14 +98,21 @@ def wait_for_twrp(adb, expected_serial, expected_version, timeout_seconds):
                 continue
             props = adb_read(adb, serial, "shell", "getprop", "ro.twrp.version")
             observations.append([{"props": props}])
-            version = props.get("stdout", "")
-            if props.get("returncode") == 0 and version == expected_version:
-                return {"success": True, "serial": serial, "state": row["state"],
-                        "product": row.get("product"), "twrp_version": version,
-                        "device_row": row, "observation_count": len(observations)}
-            return {"success": False, "error": "ADB identity matched but ro.twrp.version did not",
-                    "serial": serial, "expected_version": expected_version, "props": props}
+            if props.get("returncode") == 0:
+                version = props.get("stdout", "")
+                if version == expected_version:
+                    return {"success": True, "serial": serial, "state": row["state"],
+                            "product": row.get("product"), "twrp_version": version,
+                            "device_row": row, "observation_count": len(observations)}
+                if version:
+                    return {"success": False, "error": "ADB identity matched but ro.twrp.version did not",
+                            "serial": serial, "expected_version": expected_version, "props": props}
+            # Transient ADB/transport error: keep polling until the deadline.
+            last_failure = {"serial": serial, "expected_version": expected_version, "props": props}
         time.sleep(1)
+    if last_failure:
+        return {"success": False, "error": "ADB identity matched but ro.twrp.version did not respond successfully",
+                **last_failure, "timeout_seconds": timeout_seconds, "observation_count": len(observations)}
     return {"success": False, "error": "No authorized Crumpet TWRP ADB transport before timeout",
             "timeout_seconds": timeout_seconds, "expected_serial": expected_serial,
             "expected_version": expected_version, "observation_count": len(observations),

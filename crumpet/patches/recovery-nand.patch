@@ -1,0 +1,203 @@
+--- a/Android.mk
++++ b/Android.mk
+@@ -409,6 +409,9 @@
+ endif
+ ifneq ($(TW_NO_LEGACY_PROPS),)
+ 	LOCAL_CFLAGS += -DTW_NO_LEGACY_PROPS
++endif
++ifeq ($(TW_CRUMPET_NAND),true)
++	LOCAL_CFLAGS += -DTW_CRUMPET_NAND
+ endif
+ ifeq ($(TW_NO_SCREEN_UI), true)
+ 	LOCAL_CFLAGS += -DTW_NO_SCREEN_UI
+--- a/partition.cpp
++++ b/partition.cpp
+@@ -25,6 +25,11 @@
+ #include <sys/types.h>
+ #include <sys/vfs.h>
+ #include <unistd.h>
++#ifdef TW_CRUMPET_NAND
++#include <sys/wait.h>
++#include <limits.h>
++#include <errno.h>
++#endif
+ #include <dirent.h>
+ #include <fcntl.h>
+ #include <grp.h>
+@@ -78,6 +83,46 @@
+ #include "progresstracking.hpp"
+ 
+ using namespace std;
++
++#ifdef TW_CRUMPET_NAND
++// These scripts dispatch only to the NAND/UBI backends, never dd to a volume.
++static bool CrumpetRun(const char* script, const string& label, const string& filename) {
++    pid_t pid = fork();
++    if (pid < 0) return false;
++    if (pid == 0) {
++        execl("/sbin/sh", "sh", script, label.c_str(), filename.c_str(), (char*)NULL);
++        _exit(127);
++    }
++    int status;
++    while (waitpid(pid, &status, 0) < 0) {
++        if (errno != EINTR) return false;
++    }
++    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
++}
++
++static string CrumpetImageLabel(const string& mount) {
++    if (mount == "/boot_a" || mount == "/boot_b") return mount.substr(1);
++    if (mount == "/system_a_image") return "system_a";
++    if (mount == "/system_b_image") return "system_b";
++    return "";
++}
++
++static unsigned long long CrumpetVolumeSize(const string& path) {
++    char resolved[PATH_MAX], extra;
++    int ubi, volume, consumed = 0;
++    if (!realpath(path.c_str(), resolved) ||
++        sscanf(resolved, "/dev/ubi%d_%d%n", &ubi, &volume, &consumed) != 2 || resolved[consumed]) return 0;
++    char attr[PATH_MAX];
++    snprintf(attr, sizeof(attr), "/sys/class/ubi/ubi%d_%d/data_bytes", ubi, volume);
++    FILE* stream = fopen(attr, "r");
++    if (!stream) return 0;
++    unsigned long long size = 0;
++    if (fscanf(stream, "%llu %c", &size, &extra) != 1) size = 0;
++    fclose(stream);
++    return size;
++}
++#endif
++
+ 
+ static int auto_index = 0; // v2 fstab allows you to specify a mount point of "auto" with no /. These items are given a mount point of /auto* where * == auto_index
+ 
+@@ -1106,6 +1151,9 @@
+ 		File_System == "exfat" ||
+ 		File_System == "f2fs" ||
+ 		File_System == "squashfs" ||
++#ifdef TW_CRUMPET_NAND
++		File_System == "ubifs" ||
++#endif
+ 		File_System == "auto")
+ 		return true;
+ 	else
+@@ -1384,6 +1432,12 @@
+ }
+ 
+ bool TWPartition::Find_Partition_Size(void) {
++#ifdef TW_CRUMPET_NAND
++    if (Mount_Point == "/system_a_image" || Mount_Point == "/system_b_image") {
++        Size = CrumpetVolumeSize(Primary_Block_Device);
++        return Size != 0;
++    }
++#endif
+ 	FILE* fp;
+ 	char line[512];
+ 	string tmpdevice;
+@@ -1689,6 +1743,12 @@
+ }
+ 
+ bool TWPartition::Wipe(string New_File_System) {
++#ifdef TW_CRUMPET_NAND
++    if (Fstab_File_System == "ubifs" && New_File_System != "ubifs") {
++        LOGERR("A UBI volume cannot be reformatted as a block filesystem\n");
++        return false;
++    }
++#endif
+ 	bool wiped = false, update_crypt = false, recreate_media = true;
+ 	int check;
+ 	string Layout_Filename = Mount_Point + "/.layout_version";
+@@ -1725,7 +1785,11 @@
+ 
+ 		if (check || Use_Rm_Rf)
+ 			wiped = Wipe_RMRF();
+-		else if (New_File_System == "ext4")
++		#ifdef TW_CRUMPET_NAND
++        else if (New_File_System == "ubifs")
++            wiped = Wipe_RMRF(); // Preserve UBI layout, volume identity, ECC and bad-block mapping.
++#endif
++        else if (New_File_System == "ext4")
+ 			wiped = Wipe_EXT4();
+ 		else if (New_File_System == "ext2" || New_File_System == "ext3")
+ 			wiped = Wipe_EXTFS(New_File_System);
+@@ -2114,6 +2178,9 @@
+ 	const char* type;
+ 	blkid_probe pr;
+ 
++	#ifdef TW_CRUMPET_NAND
++	if (Fstab_File_System == "ubifs") return; // UBI character volumes must not be probed as block filesystems.
++#endif
+ 	if (Fstab_File_System == "yaffs2" || Fstab_File_System == "mtd" || Fstab_File_System == "bml" || Ignore_Blkid)
+ 		return; // Running blkid on some mtd devices causes a massive crash or needs to be skipped
+ 
+@@ -2387,7 +2454,7 @@
+ 		PartitionManager.Remove_MTP_Storage(MTP_Storage_ID);
+ 
+ 	gui_msg(Msg("remove_all=Removing all files under '{1}'")(Mount_Point));
+-	TWFunc::removeDir(Mount_Point, true);
++	if (TWFunc::removeDir(Mount_Point, true) != 0) return false;
+ 	Recreate_AndSec_Folder();
+ 	return true;
+ }
+@@ -2831,6 +2898,17 @@
+ }
+ 
+ bool TWPartition::Backup_Dump_Image(PartitionSettings *part_settings) {
++#ifdef TW_CRUMPET_NAND
++    if (part_settings->adbbackup || (MTD_Name != "boot_a" && MTD_Name != "boot_b")) return false;
++    Backup_FileName = Backup_Name + "." + Current_File_System + ".win";
++    string backup = part_settings->Backup_Folder + "/" + Backup_FileName;
++    if (part_settings->progress) part_settings->progress->SetPartitionSize(Backup_Size);
++    if (!CrumpetRun("/sbin/crumpet-backup.sh", MTD_Name, backup)) return false;
++    if (TWFunc::Get_File_Size(backup) != Backup_Size) return false;
++    tw_set_default_metadata(backup.c_str());
++    if (part_settings->progress) part_settings->progress->UpdateSize(Backup_Size);
++    return true;
++#endif
+ 	string Full_FileName, Command;
+ 
+ 	TWFunc::GUI_Operation_Text(TW_BACKUP_TEXT, Display_Name, gui_parse_text("{@backing}"));
+@@ -2975,6 +3053,16 @@
+ 	else
+ 		Full_FileName = part_settings->Backup_Folder + "/" + Backup_FileName;
+ 
++#ifdef TW_CRUMPET_NAND
++    string label = CrumpetImageLabel(Mount_Point);
++    if (!label.empty()) {
++        if (part_settings->adbbackup) {
++            LOGERR("NAND image restore requires a seekable, verified local backup file\n");
++            return false;
++        }
++        return CrumpetRun("/sbin/crumpet-flash.sh", label, Full_FileName);
++    }
++#endif
+ 	if (Restore_File_System == "emmc") {
+ 		if (!part_settings->adbbackup)
+ 			part_settings->total_restore_size = (uint64_t)(TWFunc::Get_File_Size(Full_FileName));
+@@ -3256,6 +3344,11 @@
+ 			gui_err("img_size_err=Size of image is larger than target device");
+ 			return false;
+ 		}
++#ifdef TW_CRUMPET_NAND
++        string label = CrumpetImageLabel(Mount_Point);
++        if (!label.empty())
++            return CrumpetRun("/sbin/crumpet-flash.sh", label, full_filename);
++#endif
+ 		if (Backup_Method == BM_DD) {
+ 			if (!part_settings->adbbackup) {
+ 				if (Is_Sparse_Image(full_filename)) {
+@@ -3303,6 +3396,10 @@
+ }
+ 
+ bool TWPartition::Flash_Image_FI(const string& Filename, ProgressTracking *progress) {
++#ifdef TW_CRUMPET_NAND
++    if (MTD_Name != "boot_a" && MTD_Name != "boot_b") return false;
++    return CrumpetRun("/sbin/crumpet-flash.sh", MTD_Name, Filename);
++#endif
+ 	string Command;
+ 	unsigned long long file_size;
+ 
+--- a/crumpet-nand-support.version
++++ b/crumpet-nand-support.version
+@@ -0,0 +1 @@
++1

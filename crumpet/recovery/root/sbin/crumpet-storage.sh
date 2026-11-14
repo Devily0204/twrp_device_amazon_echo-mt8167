@@ -95,7 +95,8 @@ for volume in "${root}"/sys/class/ubi/ubi*_*; do
     fi
 done
 
-slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
+slot=$("${root}/sbin/crumpet-active-slot.sh") || exit 1
+slot="_${slot}"
 case "$slot" in
     _a|_b)
         system="${root}/dev/block/crumpet/system${slot}"

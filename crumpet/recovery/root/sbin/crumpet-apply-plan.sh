@@ -7,7 +7,8 @@ PATH="${root}/sbin:/sbin:/system/bin:${PATH}"
 activate=${2:-}
 cd "$1"
 target=$(cat target-slot)
-active=$(getprop ro.boot.slot_suffix)
+active=$("${root}/sbin/crumpet-active-slot.sh")
+active="_${active}"
 case "$target:$active" in a:_b|b:_a) ;; *) echo "Plan is not for the inactive slot" >&2; exit 1 ;; esac
 # Verify the complete pair before touching either target. The preparer creates
 # exactly these two entries, never caller-supplied shell commands or partitions.

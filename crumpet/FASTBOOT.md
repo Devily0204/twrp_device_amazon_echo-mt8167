@@ -36,6 +36,12 @@ validation.
 
 ## 1. Build TWRP on the build VM
 
+On a fresh checkout run `python3 tools/prepare_recovery.py` once first: it
+applies `crumpet/patches/recovery-nand.patch` to the recovery core and writes
+the `crumpet-nand-support.version` marker required by `crumpet/BoardConfig.mk`.
+Without that marker `lunch omni_crumpet-eng` stops.
+
+
 The optional existing Ubuntu build environment is driven by
 `crumpet-bundle/proxmox-vm/build.sh`
 runs `mka recoveryimage`, verifies `init.recovery.logd.rc`,

@@ -108,7 +108,7 @@ movw r1, #0x2818
 movt r1, #0x016f
 cmp r0, r1
 bne canary_wait
-movw r4, #0x8000
+movw r4, #0x0000
 movt r4, #0x4598
 ldr r0, [r4]
 movw r1, #0x0dd0

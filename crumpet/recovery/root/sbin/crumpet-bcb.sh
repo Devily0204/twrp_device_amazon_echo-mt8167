@@ -33,7 +33,7 @@ case "$1" in
         [ "$#" = 2 ] || exit 2
         case "$2" in a|b) ;; *) exit 2 ;; esac
         if [ "$1" = mark-success ]; then
-            [ "$(getprop ro.boot.slot_suffix)" = "_$2" ] || exit 1
+            [ "$(crumpet-active-slot.sh)" = "_$2" ] || exit 1
             crumpet-mtd bcb-success "$device" "$2"
         else
             crumpet-mtd bcb-activate "$device" "$2"
