@@ -314,7 +314,7 @@ def build(kernel, fdt, ramdisk, slot, stage="minimal", canary=None, mmu_off=Fals
         raise ValueError("The full LK loader stage cannot be combined with --stage direct")
     if stage in ("minimal", "dpc"):
         from lk_stage_minimal import assemble_stage
-        stage_bytes = assemble_stage(canary, dpc=stage == "dpc", mmu_off=mmu_off, lk_loader=lk_loader)
+        stage_bytes = assemble_stage(canary, dpc=stage == "dpc", mmu_off=mmu_off, lk_loader=lk_loader, initrd_end=RAMDISK_ADDR + len(ramdisk))
         entry_thumb = STAGE_ENTRY_THUMB
         out[STAGE_OFF:STAGE_OFF + len(stage_bytes)] = stage_bytes
         stage_hash = sha256(stage_bytes)

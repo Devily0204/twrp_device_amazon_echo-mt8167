@@ -73,8 +73,7 @@ bl clean_invalidate_range
 /* Publish FDT and the real TWRP initramfs before turning caches off. */
 movw r4, #0x0000
 movt r4, #0x4598
-movw r5, #0x3000
-movt r5, #0x4629                  @ exclusive end of the downloaded bundle
+/* INITRD_END */
 bl clean_invalidate_range
 /* CANARY_CACHE */
 

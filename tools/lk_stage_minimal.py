@@ -130,13 +130,16 @@ b watchdog_reset
 """
 
 
-def assemble_stage(canary=None, dpc=False, mmu_off=False, lk_loader=False):
+def assemble_stage(canary=None, dpc=False, mmu_off=False, lk_loader=False, initrd_end=0x46293000):
     if lk_loader:
         if canary is not None or mmu_off:
             raise ValueError("LK loader mode is incompatible with canaries and --mmu-off")
         from lk_stage_loader import assemble_loader_stage
         return assemble_loader_stage()
     source = Path(__file__).with_suffix(".S").read_text(encoding="utf-8")
+    end = int(initrd_end)
+    source = source.replace("/* INITRD_END */",
+        f"movw r5, #{end & 0xFFFF:#06x}\nmovt r5, #{(end >> 16) & 0xFFFF:#06x}")
     if mmu_off:
         marker = "/* MMU_OFF_OPTION */"
         if source.count(marker) != 1:
