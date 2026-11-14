@@ -69,7 +69,7 @@ python3 tools/build_crumpet_fastboot.py \
 
 ## 2b. Package for another PC
 
-`crumpet-nand-build/proxmox-vm/package-fastboot.sh` runs the whole host-side
+`tools/package_fastboot.sh` runs the whole host-side
 pipeline in one step: it creates a private venv with `keystone-engine` and
 `pyusb`, runs the offline tests, builds the bundle and zips the bundle, the
 runner, the rebuild sources, the tests and a README into
