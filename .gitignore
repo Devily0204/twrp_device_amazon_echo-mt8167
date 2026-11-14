@@ -12,11 +12,11 @@ run-twrp-*.json
 
 # Prebuilt or repacked recovery images (initial Git history is unchanged)
 /recovery.img
-/crumpet-nand-build/recovery.img
-/crumpet-nand-build/init-import-fix/recovery.img
-/crumpet-nand-build/proxmox-vm/recovery.img
-/crumpet-nand-build/proxmox-vm/uncommitted-main/recovery.img
+/crumpet-bundle/recovery.img
+/crumpet-bundle/init-import-fix/recovery.img
+/crumpet-bundle/proxmox-vm/recovery.img
+/crumpet-bundle/proxmox-vm/uncommitted-main/recovery.img
 
 # Archives and full source mirrors, not part of the device tree
 *.tar.gz
-/crumpet-nand-build/proxmox-vm/cloud-source/
+/crumpet-bundle/proxmox-vm/cloud-source/

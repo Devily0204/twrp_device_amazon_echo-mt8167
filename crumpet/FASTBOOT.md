@@ -36,8 +36,8 @@ validation.
 
 ## 1. Build TWRP on the build VM
 
-The optional existing Ubuntu build environment is documented in
-`crumpet-nand-build/proxmox-vm/README.md`. `crumpet-nand-build/proxmox-vm/build.sh`
+The optional existing Ubuntu build environment is driven by
+`crumpet-bundle/proxmox-vm/build.sh`
 runs `mka recoveryimage`, verifies `init.recovery.logd.rc`,
 `init.recovery.nano.rc` and `init.recovery.vold_decrypt.rc`, and writes
 `artifacts/recovery.img`. These three imports are produced by the normal
@@ -77,7 +77,7 @@ runner, the rebuild sources, the tests and a README into
 successful VM build when the fastboot tools are present in the device tree.
 
 ```sh
-./package-fastboot.sh \
+tools/package_fastboot.sh \
   --repo /path/to/device-tree \
   --recovery artifacts/recovery.img \
   --output artifacts/fastboot
@@ -171,7 +171,6 @@ be used for installation.
 
 ```sh
 python3 -m unittest discover -s tests -p "test_fastboot.py" -v
-python3 tests/check_crumpet.py
 ```
 
 The tests validate recovery/FDT extraction, generated MTK header, the valid

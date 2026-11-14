@@ -57,12 +57,6 @@ cp "$REPO/tools/build_crumpet_fastboot.py" "$REPO/tools/lk_stage_loader.py" \
 cp "$REPO/tests/test_fastboot.py" "$PKG/tests/"
 cp "$REPO/crumpet/FASTBOOT.md" "$PKG/BUILD.md"
 
-# Optional test fixture image (only if it exists in the source tree).
-if [[ -f "$REPO/crumpet-nand-build/recovery.img" ]]; then
-  mkdir -p "$PKG/crumpet-nand-build"
-  cp "$REPO/crumpet-nand-build/recovery.img" "$PKG/crumpet-nand-build/"
-fi
-
 cat > "$PKG/README.md" <<'EOF'
 # Crumpet TWRP Fastboot package
 
@@ -114,7 +108,7 @@ python3 -m unittest discover -s tests -p test_fastboot.py
 ```
 
 `BUILD.md` documents the full device-tree/recovery build and the Fastboot
-layout. `proxmox-vm/package-fastboot.sh` in the device tree produces this
+layout. `tools/package_fastboot.sh` in the device tree produces this
 package from a fresh VM build.
 EOF
 
