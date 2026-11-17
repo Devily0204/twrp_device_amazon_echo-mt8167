@@ -10,6 +10,15 @@ LOCAL_STATIC_LIBRARIES := libc
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE := crumpet-bootchain
+LOCAL_SRC_FILES := crumpet-mtd.c
+LOCAL_CFLAGS := -Wall -Wextra -Werror -DCRUMPET_BOOTCHAIN_TOOL
+LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_STATIC_LIBRARIES := libc
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := crumpet-mtd
 LOCAL_SRC_FILES := crumpet-mtd.c
 LOCAL_CFLAGS := -Wall -Wextra -Werror

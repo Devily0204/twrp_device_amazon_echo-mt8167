@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "hashes": {
+    "stock_boot0.bin": "82b7d9b57196317186a0c437c8631edad2ef938b7a67a2a7ceebbb4a756185da",
+    "stock_tee1.bin": "921b1b69e401ae8e2552084437ab314bb847e3330e1f1fbff853d34d8cdd44bd",
+    "preloader_donor.img": "a5b30bff5dc20e7f426e45197b77f175a6d986ecb9329c6e96767b21a04cd2a5",
+    "block4_bootstrap.bin": "f8eee8ed46f43d7bb9f4166c7157490af9857151451fbd3ba8f4f589b34c934b",
+    "firmware_bridge.bin": "350f7636646ab3795cb84670dcd81e55341fde76005f45ef983d3c7fb40e8350",
+    "oem_code.bin": "c9c9da590777086f95c12ef7471dfc333bd1b6f5c5e7cf512223394e91327cc7",
+    "firmware_template.dtb": "c986c803991cf46e8be9f253a4e6c1c1e75cbf2504506a152e369f921676bef2",
+    "stock_pvt.dtb": "d83ae5489b7a3bb6b7d1a86dd45192cc2656aed47cb06caf9dae8988f98da766",
+    "stock_lk.img": "c4e87b94b1fb0a39bdf23e4d1aadeee55d422072b5a2b43ca3e91275e250b69d",
+    "tee1_block0.bin": "a2d51efe724fd297a65f21812919902f9de5d3e56afb908009e845f91ec9e504",
+    "tee1_block1.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+    "tee1_block2.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+    "tee1_block3.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90"
+  },
+  "source": "Public OEM firmware components and identity-free structural DTB",
+  "dummy_meid": "EchoMuseDummyID1",
+  "hardware_profile": "Crumpet PVT; 256 MiB RAM; 512 MiB NAND"
+}

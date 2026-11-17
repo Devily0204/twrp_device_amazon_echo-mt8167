@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from unittest.mock import patch
 import struct
 import sys
 import tempfile
@@ -69,7 +70,7 @@ class IndependentPayloadChecks(unittest.TestCase):
         self.assertEqual(bundle.sha256(self.kernel), "0ea78c5250d4c431b3856a8079d47cf0de0ff2e267b4d53536889715f26a540d")
         offset, _ = bundle.recovery_dtb(self.kernel)
         self.assertEqual(offset, 0x55701A)
-        self.assertEqual(bundle.fdt_properties(self.fdt)["/memory@00000000"]["reg"], struct.pack(">QQ", 0x40000000, 0x0F9C0000))
+        self.assertEqual(bundle.fdt_properties(self.fdt)["/memory@00000000"]["reg"], struct.pack(">QQ", 0x40000000, 0x0F7C0000))
 
     def test_generated_mtk_header_is_deterministic(self):
         self._need_recovery()
@@ -185,6 +186,16 @@ class IndependentPayloadChecks(unittest.TestCase):
 
 
 class ProtocolChecks(unittest.TestCase):
+    def test_lk_version_gate_remains_before_ram_handoff(self):
+        responses = {b"getvar:product": "OKAYCRUMPET", b"getvar:unlock_status": "OKAYfalse",
+                     b"getvar:lk_build_desc": "OKAY" + lk.EXPECTED_LK_BUILD,
+                     b"getvar:max-download-size": "OKAY0x8000000"}
+        with patch.object(lk, "read_only_exchange", side_effect=lambda _d, command: responses[command]):
+            lk.gates(None, 0x1400000)
+            responses[b"getvar:lk_build_desc"] = "OKAYunsupported"
+            with self.assertRaisesRegex(RuntimeError, "Unexpected LK build"):
+                lk.gates(None, 0x1400000)
+
     def test_direct_loader_packets(self):
         packets = lk.loader_packets()
         self.assertEqual(len(packets), 12)

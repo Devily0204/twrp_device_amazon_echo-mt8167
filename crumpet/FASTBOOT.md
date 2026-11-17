@@ -4,6 +4,12 @@ This device tree builds TWRP with Omni `recoveryimage` and packages the result
 for the locked LK Fastboot. **The exploit does not require an LK baseline,
 Amazon rescue ramdisk, custom binary stage or an external crumpet.py.**
 
+The VM package also contains the separate persistent host installer
+`tools/install_bootchain.py`. See [HOST-INSTALLER.md](HOST-INSTALLER.md) for
+its supported hardware/layout and source target blocks, explicit experimental dummy-MEID option, private
+per-device backups, and TWRP Boot A/B and System A/B image-writing commands.
+The RAM start itself does not install the persistent bootchain.
+
 ## Components and their provenance
 
 | Component | Generated from |
@@ -16,9 +22,16 @@ Amazon rescue ramdisk, custom binary stage or an external crumpet.py.**
 | Handoff | Project-owned `tools/lk_stage_minimal.S`, assembled by `lk_stage_minimal.py`; USB code in `lk_fastboot.py` |
 | Full LK loader handoff | `--lk-loader`: project-owned `tools/lk_stage_loader.S`, assembled by `lk_stage_loader.py`; reproduces the DPC worker, loader prolog/initializer/DTB hooks and the full kernel-entry path |
 
-The real initramfs is at `0x45990000` (bundle offset `0x990000`). Its size and
-end are computed from the actual gzip data. `/chosen/bootargs` and the 249 MiB
-memory limit are patched into the appended PVT FDT.
+The base builder's real initramfs is at `0x45990000` (bundle offset `0x990000`). Its size and
+end are computed from the actual gzip data. `/chosen/bootargs` and the RAM
+limit below `0x4f7c0000` are patched into the appended PVT FDT. This excludes
+the patched bootchain's secure ATF/MTEE reservation and is also safe on stock.
+
+`tools/package_fastboot.sh` selects the full LK loader and then applies
+`tools/device_data.py`: it extends the FDT for the original LK identity and preloader-ATAG capture
+and relocates the real initramfs to `0x459A0000` (offset `0x9A0000`). The
+packaged manifest records these final addresses and hashes. Rebuilding only
+the base bundle does not include that capture and cannot feed the installer.
 
 The small dummy initramfs is **not** the TWRP ramdisk and contains no rescue
 binaries. It exists only because the LK boot header describes a ramdisk. The
@@ -46,7 +59,9 @@ The optional existing Ubuntu build environment is driven by
 `crumpet-bundle/proxmox-vm/build.sh`
 runs `mka recoveryimage`, verifies `init.recovery.logd.rc`,
 `init.recovery.nano.rc` and `init.recovery.vold_decrypt.rc`, and writes
-`artifacts/recovery.img`. These three imports are produced by the normal
+`artifacts/recovery.img` plus `artifacts/fastboot/crumpet-twrp-fastboot.zip`.
+Packaging is required; a packaging failure fails the complete build.
+These three imports are produced by the normal
 `PRODUCT_COPY_FILES` path, not a post-build repack.
 
 Check the result from this repository:
@@ -186,8 +201,12 @@ an external baseline or a rescue payload.
 
 ## Distribution note
 
-The builder and protocol implementation are source code in this repository.
-Do not add baseline bundles, rescue ramdisks, binary stages, generated recovery
-images or other vendor binaries. The historical prebuilt kernel and its
-provenance still require the separate license review described in the project
-documentation; that history is not changed by the new builder.
+The RAM builder and protocol implementation are source code. The persistent
+installer additionally needs the pinned, generic OEM inputs in
+`assets/bootchain` (see its `profile.json`), including the signed donor
+preloader and shared firmware. The structural DTB template has its factory
+IDME/devinfo removed and GPT GUIDs in the stock reference are zeroed.
+Never package a unit's captures, calibration backups or generated personalized
+firmware. Generated recovery images and baseline/rescue bundles belong in
+build artifacts, not the source tree. The existing prebuilt kernel and the
+additional OEM inputs require license review before public redistribution.

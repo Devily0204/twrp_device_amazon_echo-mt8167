@@ -8,6 +8,7 @@
 # with the runner scripts and instructions. The resulting zip is all a second
 # PC needs (besides Python 3, pyusb, libusb/WinUSB and adb).
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 REPO=""
 RECOVERY=""
@@ -37,90 +38,51 @@ fi
 PY="$VENV/bin/python"
 
 echo "== offline tests =="
-(cd "$REPO" && "$PY" -m unittest discover -s tests -p "test_fastboot.py")
+(cd "$REPO" && CRUMPET_RECOVERY="$RECOVERY" "$PY" -m unittest discover -s tests -p 'test_*.py')
 
-PKG="$OUT/package"
-rm -rf "$PKG"
+# Use a fresh staging directory; publish only a completely built zip.
+PKG=$(mktemp -d "$OUT/package.XXXXXXXX")
+trap 'rm -rf -- "$PKG"' EXIT
 mkdir -p "$PKG/tools" "$PKG/tests"
-
-echo "== bundle =="
 "$PY" "$REPO/tools/build_crumpet_fastboot.py" \
   --recovery "$RECOVERY" --slot b --lk-loader \
   --output "$PKG/crumpet-twrp-b.bundle.bin"
+# Capture original per-device identity in RAM before the recovery handoff.
+"$PY" "$REPO/tools/device_data.py" --bundle "$PKG/crumpet-twrp-b.bundle.bin"
 
-# The bundle and its manifest must stay together; the runner validates both.
-cp "$REPO/tools/run_crumpet_fastboot.py" "$REPO/tools/lk_fastboot.py" "$PKG/tools/"
-# Rebuild sources so the bundle can also be rebuilt from any recovery.img.
-cp "$REPO/tools/build_crumpet_fastboot.py" "$REPO/tools/lk_stage_loader.py" \
-   "$REPO/tools/lk_stage_loader.S" "$REPO/tools/lk_stage_minimal.py" \
-   "$REPO/tools/lk_stage_minimal.S" "$PKG/tools/"
-cp "$REPO/tests/test_fastboot.py" "$PKG/tests/"
+for tool in run_crumpet_fastboot.py lk_fastboot.py build_crumpet_fastboot.py \
+  lk_stage_loader.py lk_stage_loader.S lk_stage_minimal.py lk_stage_minimal.S \
+  install_bootchain.py build_bootchain.py device_data.py firmware_formats.py \
+  firmware_profile.py firmware_dtb.py slot_loader.py lk_bootargs.py; do
+  cp "$REPO/tools/$tool" "$PKG/tools/"
+done
+cp -r "$REPO/assets" "$PKG/"
+cp "$REPO/tests/test_fastboot.py" "$REPO/tests/test_bootchain.py" "$PKG/tests/"
+cp "$REPO/crumpet/HOST-INSTALLER.md" "$PKG/README.md"
 cp "$REPO/crumpet/FASTBOOT.md" "$PKG/BUILD.md"
-
-cat > "$PKG/README.md" <<'EOF'
-# Crumpet TWRP Fastboot package
-
-Boot TWRP 3.7.0_9-0 on a **stock, locked** Amazon Echo Dot 3rd Gen refresh
-(crumpet / MT8167) directly from its stock LK Fastboot. No unlock, no flash,
-no BROM, no NAND/preloader/TEE changes. Everything happens in RAM; a power
-cycle restores the stock boot path.
-
-## One-time host setup
-
-- Python 3 with `pyusb` (and `keystone-engine` only to rebuild the bundle).
-- libusb: `libusb-1.0.dll` on Windows; pass its directory via `--libusb-dir`.
-- Windows: bind the Fastboot interface `VID_0BB4&PID_0C01` to WinUSB/libusb
-  with Zadig. ADB needs its normal driver for `18D1:D001`.
-- `adb` on PATH (or pass `--adb <path>`).
-
-## Run
-
-1. Put the Dot into stock Fastboot (hold Action while applying power).
-2. Read-only gates:
-
-   ```powershell
-   py tools\run_crumpet_fastboot.py --bundle crumpet-twrp-b.bundle.bin --check
-   ```
-
-   Requires `product=CRUMPET`, `unlock_status=false` and LK build
-   `6f7225e-20230407_002912`. Do not continue if these do not match: the stage
-   addresses are pinned to exactly this LK build.
-
-3. Start TWRP:
-
-   ```powershell
-   py tools\run_crumpet_fastboot.py --bundle crumpet-twrp-b.bundle.bin --execute
-   ```
-
-   Success = ADB `0123456789ABCDEF`, `state=recovery`, `product=omni_crumpet`,
-   `ro.twrp.version=3.7.0_9-0`.
-
-The same bundle works for every crumpet Dot with that exact LK build.
-
-## Rebuild the bundle
-
-```sh
-python3 -m pip install keystone-engine
-python3 tools/build_crumpet_fastboot.py \
-  --recovery <recovery.img> --slot b --lk-loader \
-  --output crumpet-twrp-b.bundle.bin
-python3 -m unittest discover -s tests -p test_fastboot.py
-```
-
-`BUILD.md` documents the full device-tree/recovery build and the Fastboot
-layout. `tools/package_fastboot.sh` in the device tree produces this
-package from a fresh VM build.
-EOF
-
-cat > "$PKG/requirements.txt" <<'EOF'
-keystone-engine
-pyusb
-EOF
-
-(cd "$OUT" && rm -f crumpet-twrp-fastboot.zip && \
-  python3 -c "import shutil; shutil.make_archive('crumpet-twrp-fastboot', 'zip', 'package')")
-
-echo "== result =="
-ls -l "$OUT/crumpet-twrp-fastboot.zip"
-sha256sum "$PKG/crumpet-twrp-b.bundle.bin"
-echo "package: $OUT/crumpet-twrp-fastboot.zip"
+printf 'keystone-engine\npyusb\n' > "$PKG/requirements.txt"
+# Bind the host installer to the native helper in this exact VM recovery.
+PYTHONPATH="$REPO/tools" "$PY" - "$RECOVERY" "$PKG/recovery-tools.json" <<'PY'
+import gzip, hashlib, json, sys
+from pathlib import Path
+import build_crumpet_fastboot as b
+image = Path(sys.argv[1]).read_bytes()
+raw = gzip.decompress(b.extract_ramdisk(image))
+entries = {name: raw[offset:offset+length] for name, offset, length in b.cpio_entries(raw)}
+helper = entries['sbin/crumpet-bootchain']
+assert helper[:4] == b'\x7fELF'
+Path(sys.argv[2]).write_text(json.dumps({
+    'recovery_sha256': hashlib.sha256(image).hexdigest(),
+    'crumpet-bootchain_sha256': hashlib.sha256(helper).hexdigest()
+}, indent=2) + '\n')
+PY
+(cd "$PKG" && "$PY" -m unittest discover -s tests -p 'test_*.py')
+"$PY" - "$PKG" "$OUT/crumpet-twrp-fastboot" <<'PY'
+import hashlib, shutil, sys
+from pathlib import Path
+archive = Path(shutil.make_archive(sys.argv[2] + '.new', 'zip', sys.argv[1]))
+final = Path(sys.argv[2] + '.zip')
+archive.replace(final)
+final.with_suffix('.zip.sha256').write_text(hashlib.sha256(final.read_bytes()).hexdigest() + '  ' + final.name + '\n')
+print(final)
+PY

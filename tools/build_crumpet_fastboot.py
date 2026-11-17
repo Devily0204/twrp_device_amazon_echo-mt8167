@@ -112,13 +112,19 @@ def recovery_dtb(kernel):
 
 
 def patch_memory_249m(fdt):
+    """Historic API name: now stop RAM below the bridge's secure region.
+
+    This also boots on stock, which reserves less memory. The extra 2 MiB
+    exclusion prevents TWRP from allocating into the patched MTEE firmware.
+    """
     nodes = fdt_properties(fdt)
     path = "/memory@00000000" if "/memory@00000000" in nodes else "/memory"
     require(path in nodes and len(nodes[path].get("reg", b"")) == 16, "Missing /memory reg")
     before = nodes[path]["reg"]
     expected = struct.pack(">QQ", 0x40000000, 0x20000000)
-    patched = struct.pack(">QQ", 0x40000000, 0x0F9C0000)
-    require(before in (expected, patched), f"Unexpected physical memory map: {before.hex()}")
+    old = struct.pack(">QQ", 0x40000000, 0x0F9C0000)
+    patched = struct.pack(">QQ", 0x40000000, 0x0F7C0000)
+    require(before in (expected, old, patched), f"Unexpected physical memory map: {before.hex()}")
     out = bytearray(fdt)
     start = out.find(before)
     require(start >= 0 and out[start:start + 16] == before, "Cannot locate /memory reg")

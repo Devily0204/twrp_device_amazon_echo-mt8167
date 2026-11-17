@@ -95,7 +95,7 @@ def main():
     for name in required:
         assert name in files and files[name], f"Missing or empty ramdisk entry: {name}"
         print(f"PRESENT {name}: {len(files[name])} bytes")
-    for name in ("sbin/recovery", "sbin/crumpet-ubi", "sbin/crumpet-mtd"):
+    for name in ("sbin/recovery", "sbin/crumpet-ubi", "sbin/crumpet-mtd", "sbin/crumpet-bootchain"):
         elf = files[name]
         assert elf[:4] == b"\x7fELF", f"Not ELF: {name}"
         assert elf[4] == 1 and struct.unpack_from("<H", elf, 18)[0] == 40, f"Not 32-bit ARM: {name}"

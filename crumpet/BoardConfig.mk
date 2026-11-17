@@ -35,7 +35,7 @@ BOARD_RECOVERYIMAGE_PARTITION_SIZE := 15990784
 AB_OTA_UPDATER := false
 AB_OTA_PARTITIONS :=
 PRODUCT_STATIC_BOOT_CONTROL_HAL :=
-TARGET_RECOVERY_DEVICE_MODULES := crumpet-ubi crumpet-mtd
+TARGET_RECOVERY_DEVICE_MODULES := crumpet-ubi crumpet-mtd crumpet-bootchain
 TW_INCLUDE_BCBTOOL := false
 TW_OTA_ASSERT_DEVICES := crumpet
 # This old recovery tests whether the variable is nonempty, not whether it is true.

@@ -65,7 +65,7 @@ static void die(const char *what) {
 }
 
 static void usage(const char *argv0) {
-    fprintf(stderr, "Usage: %s info DEV | read DEV OFFSET LENGTH FILE | write DEV OFFSET FILE\n"
+    fprintf(stderr, "Usage: %s info DEV | check DEV OFFSET LENGTH | read DEV OFFSET LENGTH FILE | write DEV OFFSET FILE\n"
                     "  bcb-status DEV | bcb-read DEV FILE | bcb-write DEV FILE\n"
                     "  bcb-activate DEV a|b | bcb-success DEV a|b\n", argv0);
     exit(2);
@@ -476,8 +476,13 @@ static int allow_device(const char *path) {
     if (!f || !fgets(name, sizeof(name), f)) die("MTD name");
     fclose(f);
     name[strcspn(name, "\r\n")] = 0;
+#ifdef CRUMPET_BOOTCHAIN_TOOL
+    if (strcmp(name, "brhgptpl_0") && strcmp(name, "tee1")) {
+        fprintf(stderr, "Bootchain I/O allowed only for brhgptpl_0 and tee1\n");
+#else
     if (strcmp(name, "boot_a") && strcmp(name, "boot_b") && strcmp(name, "misc")) {
         fprintf(stderr, "Raw I/O allowed only for boot_a, boot_b and misc; UBI/bootloader/identity regions excluded\n");
+#endif
         exit(2);
     }
     struct stat st;
@@ -489,7 +494,11 @@ static int allow_device(const char *path) {
     struct mtd_info_user info;
     get_info(fd, path, &info);
     close(fd);
+#ifdef CRUMPET_BOOTCHAIN_TOOL
+    uint32_t expected = !strcmp(name, "tee1") ? 5242880 : 262144;
+#else
     uint32_t expected = !strcmp(name, "misc") ? 2097152 : 15990784;
+#endif
     if ((info.type != 4 && info.type != 8) || info.size != expected ||
         info.erasesize != 262144 || info.writesize != 4096) {
         errno = EINVAL;
@@ -509,6 +518,15 @@ int main(int argc, char **argv) {
               !strcmp(command, "bcb-activate") || !strcmp(command, "bcb-success")) && argc == 4 && misc)
         cmd_bcb(command, argv[2], argv[3]);
     else if (!strcmp(command, "info") && argc == 3) cmd_info(argv[2]);
+    else if (!strcmp(command, "check") && argc == 5) {
+        int fd = open_dev(argv[2], O_RDONLY);
+        struct mtd_info_user info;
+        get_info(fd, argv[2], &info);
+        uint64_t offset = parse_u64(argv[3]), length = parse_u64(argv[4]);
+        check_range(&info, offset, length);
+        check_bad_blocks(fd, &info, offset, length);
+        close(fd);
+    }
     else if (!strcmp(command, "read") && argc == 6)
         cmd_read(argv[2], parse_u64(argv[3]), parse_u64(argv[4]), argv[5]);
     else if (!strcmp(command, "write") && argc == 5 && !misc)
