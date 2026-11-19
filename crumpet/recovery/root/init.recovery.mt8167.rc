@@ -1,0 +1,13 @@
+import /init.recovery.led-service.rc
+
+on init
+    write /sys/devices/platform/mt_usb/cmode 1
+    chmod 0755 /sbin/crumpet-storage.sh
+    chmod 0755 /sbin/crumpet-backup.sh
+    chmod 0755 /sbin/crumpet-flash.sh
+    chmod 0755 /sbin/crumpet-bcb.sh
+    chmod 0755 /sbin/crumpet-apply-plan.sh
+
+on fs
+    # Attach existing UBI containers; no volume creation or formatting.
+    exec u:r:recovery:s0 root root -- /sbin/sh /sbin/crumpet-storage.sh --init

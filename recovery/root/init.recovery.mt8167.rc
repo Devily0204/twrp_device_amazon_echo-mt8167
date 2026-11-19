@@ -1,4 +1,4 @@
-import /init.recovery.leds.rc
+import /init.recovery.led-service.rc
 
 on init
     write /sys/devices/platform/mt_usb/cmode 1
@@ -17,14 +17,8 @@ on fs
 
     exec u:r:recovery:s0 root root -- /sbin/sh /sbin/slot-symlinks.sh
 
-service led-anim /sbin/sh /sbin/led-anim.sh
-    seclabel u:r:recovery:s0
-    disabled
-
 on boot
     exec u:r:recovery:s0 root root -- /sbin/sh /sbin/bcbfix
-
-    start led-anim
 
 on property:amonet.preloader=rw
     write /sys/block/mmcblk0boot0/force_ro 0

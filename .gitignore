@@ -1,0 +1,22 @@
+# IDE and Python caches
+.idea/
+__pycache__/
+*.pyc
+
+# Generated recovery/fastboot artifacts and logs (never source inputs)
+out/
+*.bundle.bin
+*.bundle.json
+*.uart.log
+run-twrp-*.json
+
+# Prebuilt or repacked recovery images (initial Git history is unchanged)
+/recovery.img
+/crumpet-bundle/recovery.img
+/crumpet-bundle/init-import-fix/recovery.img
+/crumpet-bundle/proxmox-vm/recovery.img
+/crumpet-bundle/proxmox-vm/uncommitted-main/recovery.img
+
+# Archives and full source mirrors, not part of the device tree
+*.tar.gz
+/crumpet-bundle/proxmox-vm/cloud-source/
